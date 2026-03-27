@@ -8,11 +8,16 @@ param(
     [string]$DateFormat = "yyyy-MM-dd",
     [string]$ZipUrl = "https://github.com/google/fonts/archive/refs/heads/main.zip",
     [string]$GitRepoUrl = "https://github.com/google/fonts.git",
-    [string]$ApiMetadataUrl = "https://www.googleapis.com/webfonts/v1/webfonts"
+    [string]$ApiMetadataUrl = "https://www.googleapis.com/webfonts/v1/webfonts",
+    [bool]$AutoInstallFonts = $true,
+    [ValidateSet("currentuser", "allusers")]
+    [string]$InstallScope = "currentuser"
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+$ProgressPreference = "SilentlyContinue"
+$ConfirmPreference = "None"
 
 function Write-Info {
     param([Parameter(Mandatory = $true)][string]$Message)
@@ -242,6 +247,122 @@ function Invoke-ApiSource {
     }
 
     return $downloaded
+}
+
+function Test-IsAdministrator {
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = New-Object Security.Principal.WindowsPrincipal($identity)
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+function Install-TtfFontsNonInteractive {
+    param(
+        [Parameter(Mandatory = $true)][string]$FontsRoot,
+        [Parameter(Mandatory = $true)][ValidateSet("currentuser", "allusers")][string]$Scope
+    )
+
+    $fontFiles = @(Get-ChildItem -LiteralPath $FontsRoot -Recurse -File -Filter "*.ttf")
+    if ($fontFiles.Count -eq 0) {
+        throw "No .ttf files found for installation under $FontsRoot"
+    }
+
+    $normalizedScope = $Scope.ToLowerInvariant()
+    if ($normalizedScope -eq "allusers") {
+        if (-not (Test-IsAdministrator)) {
+            throw "InstallScope 'allusers' requires an elevated PowerShell session."
+        }
+        $fontsDir = Join-Path $env:WINDIR "Fonts"
+        $registryPath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
+    }
+    else {
+        $fontsDir = Join-Path $env:LOCALAPPDATA "Microsoft\Windows\Fonts"
+        $registryPath = "HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts"
+    }
+
+    Ensure-Directory -Path $fontsDir
+    if (-not (Test-Path -LiteralPath $registryPath)) {
+        New-Item -Path $registryPath -Force | Out-Null
+    }
+
+    if (-not ("FontApi" -as [type])) {
+        Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public static class FontApi {
+    [DllImport("gdi32.dll", CharSet = CharSet.Unicode)]
+    public static extern int AddFontResource(string lpFileName);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern IntPtr SendMessageTimeout(
+        IntPtr hWnd,
+        uint Msg,
+        UIntPtr wParam,
+        IntPtr lParam,
+        uint fuFlags,
+        uint uTimeout,
+        out UIntPtr lpdwResult
+    );
+}
+"@
+    }
+
+    $succeeded = 0
+    $failed = 0
+    $newCopies = 0
+    $skippedExisting = 0
+
+    foreach ($font in $fontFiles) {
+        try {
+            $targetFileName = $font.Name
+            $targetPath = Join-Path $fontsDir $targetFileName
+            if (Test-Path -LiteralPath $targetPath) {
+                $skippedExisting++
+            }
+            else {
+                Copy-Item -LiteralPath $font.FullName -Destination $targetPath -Force
+                $newCopies++
+            }
+
+            $registryBase = "{0} (TrueType)" -f $font.BaseName
+            $registryName = $registryBase
+            $counter = 2
+            while ($true) {
+                $existing = Get-ItemProperty -Path $registryPath -Name $registryName -ErrorAction SilentlyContinue
+                if (-not $existing) {
+                    break
+                }
+
+                $existingValue = $existing.$registryName
+                if ($existingValue -eq $targetFileName) {
+                    break
+                }
+
+                $registryName = "{0} ({1})" -f $registryBase, $counter
+                $counter++
+            }
+
+            New-ItemProperty -Path $registryPath -Name $registryName -Value $targetFileName -PropertyType String -Force | Out-Null
+            [void][FontApi]::AddFontResource($targetPath)
+            $succeeded++
+            Write-Info -Message ("Installed font {0} ({1}/{2})" -f $font.Name, $succeeded + $failed, $fontFiles.Count)
+        }
+        catch {
+            $failed++
+            Write-Warning ("Failed to install {0}: {1}" -f $font.FullName, $_.Exception.Message)
+        }
+    }
+
+    $broadcastResult = [UIntPtr]::Zero
+    [void][FontApi]::SendMessageTimeout([IntPtr]0xffff, 0x001D, [UIntPtr]::Zero, [IntPtr]::Zero, 0, 1000, [ref]$broadcastResult)
+
+    return [pscustomobject]@{
+        total           = $fontFiles.Count
+        succeeded       = $succeeded
+        failed          = $failed
+        newCopies       = $newCopies
+        skippedExisting = $skippedExisting
+        scope           = $normalizedScope
+    }
 }
 
 function Write-InstallerHelper {
@@ -475,6 +596,18 @@ try {
 
     $summaryPath = Write-SummaryFile -OutputFolder $outputFolder -AttemptOrder $normalizedSourceOrder.ToArray() -SourceUsed $usedSource -FontCount $fontCount -Failures $failures.ToArray() -StartTime $scriptStart
     Write-Info -Message ("Wrote summary file: {0}" -f $summaryPath)
+
+    if ($AutoInstallFonts) {
+        Write-Info -Message ("Starting non-interactive font installation (scope: {0})." -f $InstallScope)
+        $installResult = Install-TtfFontsNonInteractive -FontsRoot $outputFolder -Scope $InstallScope
+        Write-Info -Message (
+            "Font installation completed. Total={0}; Succeeded={1}; Failed={2}; NewCopies={3}; SkippedExisting={4}" -f
+            $installResult.total, $installResult.succeeded, $installResult.failed, $installResult.newCopies, $installResult.skippedExisting
+        )
+        if ($installResult.failed -gt 0) {
+            throw ("Font installation failed for {0} files." -f $installResult.failed)
+        }
+    }
 
     Write-Host ""
     Write-Host ("Completed. Output='{0}' Source='{1}' TTF_Count={2}" -f $outputFolder, $usedSource, $fontCount)
