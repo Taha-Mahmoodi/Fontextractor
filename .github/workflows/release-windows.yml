@@ -1,0 +1,104 @@
+name: Release Windows Builds
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version for MSI/release (example: 1.1.1)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    env:
+      PYTHONUTF8: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve Version
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $version = "${{ github.event.inputs.version }}"
+          } else {
+            $version = "${{ github.ref_name }}".TrimStart("v")
+          }
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            throw "Could not resolve version."
+          }
+          "APP_VERSION=$version" >> $env:GITHUB_ENV
+          Write-Host "Resolved APP_VERSION=$version"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install WiX CLI v6
+        shell: pwsh
+        run: |
+          $url = "https://github.com/wixtoolset/wix/releases/download/v6.0.2/wix-cli-x64.msi"
+          $msi = Join-Path $env:RUNNER_TEMP "wix-cli-x64.msi"
+          Invoke-WebRequest -Uri $url -OutFile $msi
+          Start-Process msiexec.exe -ArgumentList "/i `"$msi`" /qn /norestart" -Wait -NoNewWindow
+
+      - name: Build EXE
+        shell: pwsh
+        run: |
+          .\V1\gui\build_exe.ps1 -PythonExe "python"
+
+      - name: Build MSI
+        shell: pwsh
+        run: |
+          .\V1\gui\build_msi.ps1 -ProductVersion "$env:APP_VERSION"
+
+      - name: Prepare Release Assets
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path .\release | Out-Null
+          $exeSource = ".\V1\gui\dist\FontExtractorGUI.exe"
+          $msiSource = ".\V1\gui\dist\FontExtractorGUI-$env:APP_VERSION.msi"
+          if (-not (Test-Path $exeSource)) { throw "EXE not found: $exeSource" }
+          if (-not (Test-Path $msiSource)) { throw "MSI not found: $msiSource" }
+          Copy-Item $exeSource ".\release\FontExtractorGUI-$env:APP_VERSION.exe" -Force
+          Copy-Item $msiSource ".\release\FontExtractorGUI-$env:APP_VERSION.msi" -Force
+
+      - name: Sign Assets (optional)
+        if: ${{ secrets.WINDOWS_CERT_PFX_BASE64 != '' && secrets.WINDOWS_CERT_PASSWORD != '' }}
+        shell: pwsh
+        env:
+          CERT_B64: ${{ secrets.WINDOWS_CERT_PFX_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+        run: |
+          $pfxPath = Join-Path $env:RUNNER_TEMP "codesign.pfx"
+          [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:CERT_B64))
+          $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe | Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $signtool) { throw "signtool.exe not found" }
+          $assets = Get-ChildItem .\release\*.exe, .\release\*.msi
+          foreach ($asset in $assets) {
+            & $signtool.FullName sign /fd SHA256 /td SHA256 /tr "http://timestamp.digicert.com" /f $pfxPath /p $env:CERT_PASSWORD $asset.FullName
+          }
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release-${{ env.APP_VERSION }}
+          path: release/*
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.APP_VERSION }}
+          name: FontExtractor v${{ env.APP_VERSION }}
+          files: |
+            release/FontExtractorGUI-${{ env.APP_VERSION }}.exe
+            release/FontExtractorGUI-${{ env.APP_VERSION }}.msi
+          generate_release_notes: true

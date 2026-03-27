@@ -133,6 +133,22 @@ Output:
 - `Install All Fonts` triggers elevated install helper after fonts are downloaded.
 - Runtime cache is automatically cleared when starting a new process.
 
+## SmartScreen / Publisher Warning
+
+If Windows shows **"Unknown publisher"** (SmartScreen), it means the app is not signed with a trusted code-signing certificate.
+
+This repo now includes a GitHub Actions release pipeline:
+- Workflow: `.github/workflows/release-windows.yml`
+- Trigger: push tag `v*` (or run manually)
+- Output: EXE + MSI release assets
+- Optional signing: set repository secrets:
+  - `WINDOWS_CERT_PFX_BASE64` (Base64 of your `.pfx`)
+  - `WINDOWS_CERT_PASSWORD`
+
+Notes:
+- Without these secrets, releases are built but **unsigned**.
+- To reduce/avoid SmartScreen warnings in production, use a trusted code-signing certificate (EV certificate is best for faster reputation).
+
 ## Output Files
 
 Each run writes:
