@@ -43,7 +43,7 @@ VALID_SOURCES = {"zip", "git", "api"}
 class FontExtractorWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("FontExtractor NeoGlass")
+        self.setWindowTitle("FontExtractor NeoGlass V1.1")
         self._settings = load_settings()
         self._state = "idle"
         self._theme = str(self._settings.get("theme", "light")).lower()

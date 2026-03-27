@@ -8,12 +8,13 @@ This repository includes:
 
 ## Project Status
 
-- Latest app snapshot: **`V1`**
+- Latest app snapshot: **`V1.1`**
 - Legacy snapshots kept for history:
   - `gui/`
   - `V000.2/`
+  - `V1/`
 
-If you are starting fresh, use **`V1`**.
+If you are starting fresh, use **`V1.1`**.
 
 ## Features
 
@@ -85,6 +86,16 @@ powershell -ExecutionPolicy Bypass -File .\Download-GoogleFonts.ps1 -SourceOrder
 Use the latest version in:
 - `V1\gui`
 
+### Use prebuilt binaries (no Python required)
+
+Prebuilt artifacts are included in this repository under:
+- `V1.1/FontExtractorGUI.exe`
+- `V1.1/FontExtractorGUI-1.1.0.msi`
+
+For end users, these are self-contained:
+- No Python installation required
+- No manual dependency installation required
+
 ### Run GUI from source
 
 ```powershell
@@ -108,11 +119,11 @@ Output:
 
 ```powershell
 cd .\V1\gui
-.\build_msi.ps1 -ProductVersion "1.0.2"
+.\build_msi.ps1 -ProductVersion "1.1.0"
 ```
 
 Output:
-- `V1\gui\dist\FontExtractorGUI-1.0.2.msi`
+- `V1\gui\dist\FontExtractorGUI-1.1.0.msi`
 
 ## GUI Usage Notes
 
@@ -145,10 +156,9 @@ Each run writes:
 Recommended:
 1. Create feature branch.
 2. Commit with clear message.
-3. Tag releases (for example `v1.0.2`).
+3. Tag releases (for example `v1.1.0`).
 4. Publish EXE/MSI from release tags.
 
 ## License
 
-This project is licensed under the **MIT License**. See [LICENSE](D:\TAHA\Dev Projects\Fontextractor\LICENSE).
 This project is licensed under the **MIT License**. See [LICENSE](./LICENSE).
