@@ -22,6 +22,19 @@ $script:LastOverallPercent = 0.0
 $script:SourceAttemptIndex = 0
 $script:SourceAttemptCount = 1
 
+function Enable-NetworkTls {
+    try {
+        $protocol = [System.Net.SecurityProtocolType]::Tls12
+        if ([enum]::GetNames([System.Net.SecurityProtocolType]) -contains "Tls13") {
+            $protocol = $protocol -bor [System.Net.SecurityProtocolType]::Tls13
+        }
+        [System.Net.ServicePointManager]::SecurityProtocol = $protocol
+    }
+    catch {
+        # Best effort only.
+    }
+}
+
 function Convert-ToClampedPercent {
     param([Parameter(Mandatory = $true)][double]$Value)
 
@@ -221,18 +234,19 @@ function Get-UniqueDatedOutputFolder {
 function Test-GitHubConnectivity {
     Throw-IfStopRequested
     try {
-        Invoke-WebRequest -Uri "https://github.com" -Method Head -TimeoutSec 20 | Out-Null
+        $client = New-Object System.Net.Sockets.TcpClient
+        $asyncResult = $client.BeginConnect("github.com", 443, $null, $null)
+        $connected = $asyncResult.AsyncWaitHandle.WaitOne(5000, $false)
+        if (-not $connected) {
+            $client.Close()
+            return $false
+        }
+        $client.EndConnect($asyncResult)
+        $client.Close()
         return $true
     }
     catch {
-        try {
-            Throw-IfStopRequested
-            Invoke-WebRequest -Uri "https://github.com" -Method Get -TimeoutSec 20 | Out-Null
-            return $true
-        }
-        catch {
-            return $false
-        }
+        return $false
     }
 }
 
@@ -862,9 +876,11 @@ $script:SourceAttemptCount = [Math]::Max(1, $normalizedSourceOrder.Count)
 Write-TaskProgress -Source "script" -Percent 0 -Message "Preparing run."
 Write-OverallProgress -Percent 0 -Message "Starting." -Source "script" -AllowDecrease
 Write-Status -Message "Worker initialized." -Level "info" -Source "script"
+Enable-NetworkTls
 
 try {
     Throw-IfStopRequested
+    Write-Info -Message "Checking connectivity..."
     Write-OverallProgress -Percent 2 -Message "Checking connectivity." -Source "script"
     $githubReachable = Test-GitHubConnectivity
     if ($githubReachable) {

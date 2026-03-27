@@ -48,6 +48,12 @@ Default unattended run:
 powershell -ExecutionPolicy Bypass -File .\Google-Fonts-Library-Downloader.ps1
 ```
 
+Run from anywhere (one line, no local script path needed):
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$u='https://raw.githubusercontent.com/Taha-Mahmoodi/Google-Fonts-Library-Downloader/main/Google-Fonts-Library-Downloader.ps1'; $p=Join-Path $env:TEMP 'Google-Fonts-Library-Downloader.ps1'; Invoke-WebRequest -Uri $u -OutFile $p -UseBasicParsing; & $p"
+```
+
 Run with explicit options:
 
 ```powershell
@@ -104,6 +110,11 @@ cd .\V1.3\gui
 - Optional code signing with secrets:
   - `WINDOWS_CERT_PFX_BASE64`
   - `WINDOWS_CERT_PASSWORD`
+- Release process for each version:
+  1. Commit version changes.
+  2. Tag version: `git tag v1.3.1` (example).
+  3. Push tag: `git push origin v1.3.1`.
+  4. GitHub Actions auto-builds EXE/MSI and publishes them as downloadable release assets.
 
 ## License
 

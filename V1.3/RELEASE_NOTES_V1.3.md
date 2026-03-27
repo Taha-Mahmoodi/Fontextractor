@@ -13,6 +13,8 @@
 - Non-GUI CLI now supports unattended full run with auto-install defaults:
   - `-AutoInstallFonts` (default: `true`)
   - `-InstallScope` (`currentuser` or `allusers`)
+- Network/TLS startup hardening for older Windows/PowerShell environments (improves startup on other laptops).
+- One-line CLI execution command documented for running from anywhere (no local script path required).
 
 ## Changed
 

@@ -19,6 +19,19 @@ $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 $ConfirmPreference = "None"
 
+function Enable-NetworkTls {
+    try {
+        $protocol = [System.Net.SecurityProtocolType]::Tls12
+        if ([enum]::GetNames([System.Net.SecurityProtocolType]) -contains "Tls13") {
+            $protocol = $protocol -bor [System.Net.SecurityProtocolType]::Tls13
+        }
+        [System.Net.ServicePointManager]::SecurityProtocol = $protocol
+    }
+    catch {
+        # Best effort only.
+    }
+}
+
 function Write-Info {
     param([Parameter(Mandatory = $true)][string]$Message)
     Write-Host ("[INFO] {0}" -f $Message)
@@ -88,17 +101,19 @@ function Get-UniqueDatedOutputFolder {
 
 function Test-GitHubConnectivity {
     try {
-        Invoke-WebRequest -Uri "https://github.com" -Method Head -TimeoutSec 20 | Out-Null
+        $client = New-Object System.Net.Sockets.TcpClient
+        $asyncResult = $client.BeginConnect("github.com", 443, $null, $null)
+        $connected = $asyncResult.AsyncWaitHandle.WaitOne(5000, $false)
+        if (-not $connected) {
+            $client.Close()
+            return $false
+        }
+        $client.EndConnect($asyncResult)
+        $client.Close()
         return $true
     }
     catch {
-        try {
-            Invoke-WebRequest -Uri "https://github.com" -Method Get -TimeoutSec 20 | Out-Null
-            return $true
-        }
-        catch {
-            return $false
-        }
+        return $false
     }
 }
 
@@ -532,6 +547,8 @@ if ($normalizedSourceOrder.Count -eq 0) {
 }
 
 try {
+    Enable-NetworkTls
+    Write-Info -Message "Checking connectivity..."
     $githubReachable = Test-GitHubConnectivity
     if ($githubReachable) {
         Write-Info -Message "GitHub connectivity check passed."
