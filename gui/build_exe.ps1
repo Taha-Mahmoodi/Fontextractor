@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [string]$PythonExe = "python"
 )
@@ -28,14 +28,14 @@ try {
         Remove-Item -LiteralPath ".\dist" -Recurse -Force
     }
 
-    $workerData = "{0};runtime" -f (Join-Path $scriptDir "runtime\Download-GoogleFonts.worker.ps1")
+    $workerData = "{0};runtime" -f (Join-Path $scriptDir "runtime\Google-Fonts-Library-Downloader.worker.ps1")
     Write-Host "Building one-file executable..."
     & $venvPython -m PyInstaller `
         --noconfirm `
         --clean `
         --onefile `
         --windowed `
-        --name "FontExtractorGUI" `
+        --name "GoogleFontsLibraryDownloaderGUI" `
         --add-data $workerData `
         "app.py"
 }
@@ -44,4 +44,5 @@ finally {
 }
 
 Write-Host ""
-Write-Host ("Build completed: {0}" -f (Join-Path $scriptDir "dist\FontExtractorGUI.exe"))
+Write-Host ("Build completed: {0}" -f (Join-Path $scriptDir "dist\GoogleFontsLibraryDownloaderGUI.exe"))
+

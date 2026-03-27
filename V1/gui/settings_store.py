@@ -19,8 +19,8 @@ DEFAULT_SETTINGS: dict[str, Any] = {
 
 def get_settings_path() -> Path:
     appdata = os.environ.get("APPDATA")
-    base_dir = Path(appdata) if appdata else (Path.home() / ".fontextractor-gui")
-    settings_dir = base_dir / "FontExtractorGUI"
+    base_dir = Path(appdata) if appdata else (Path.home() / ".google-fonts-library-downloader")
+    settings_dir = base_dir / "GoogleFontsLibraryDownloader"
     settings_dir.mkdir(parents=True, exist_ok=True)
     return settings_dir / "settings.json"
 

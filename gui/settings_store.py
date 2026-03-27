@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 import os
@@ -19,8 +19,8 @@ DEFAULT_SETTINGS: dict[str, Any] = {
 
 def get_settings_path() -> Path:
     appdata = os.environ.get("APPDATA")
-    base_dir = Path(appdata) if appdata else (Path.home() / ".fontextractor-gui")
-    settings_dir = base_dir / "FontExtractorGUI"
+    base_dir = Path(appdata) if appdata else (Path.home() / ".google-fonts-library-downloader-gui")
+    settings_dir = base_dir / "GoogleFontsLibraryDownloaderGUI"
     settings_dir.mkdir(parents=True, exist_ok=True)
     return settings_dir / "settings.json"
 
@@ -48,3 +48,4 @@ def save_settings(data: dict[str, Any]) -> None:
     settings.update(data)
     settings_path = get_settings_path()
     settings_path.write_text(json.dumps(settings, indent=2), encoding="utf-8")
+

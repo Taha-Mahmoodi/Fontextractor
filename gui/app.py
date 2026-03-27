@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from datetime import datetime
 import hashlib
@@ -40,10 +40,10 @@ from theme import DARK_THEME_QSS, LIGHT_THEME_QSS
 VALID_SOURCES = {"zip", "git", "api"}
 
 
-class FontExtractorWindow(QMainWindow):
+class GoogleFontsLibraryDownloaderWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("FontExtractor NeoGlass")
+        self.setWindowTitle("Google Fonts Library Downloader NeoGlass")
         self._settings = load_settings()
         self._state = "idle"
         self._theme = str(self._settings.get("theme", "light")).lower()
@@ -83,7 +83,7 @@ class FontExtractorWindow(QMainWindow):
         left_layout.setContentsMargins(18, 18, 18, 18)
         left_layout.setSpacing(12)
 
-        title = QLabel("FontExtractor Control Deck", left_panel)
+        title = QLabel("Google Fonts Library Downloader Control Deck", left_panel)
         title.setObjectName("HeaderTitle")
         subtitle = QLabel("Run, monitor, and control the full font extraction process.", left_panel)
         subtitle.setObjectName("SubTitle")
@@ -312,16 +312,16 @@ class FontExtractorWindow(QMainWindow):
         return digest.hexdigest()
 
     def _ensure_runtime_worker_copy(self) -> Path:
-        bundled_worker = self._resource_path(Path("runtime") / "Download-GoogleFonts.worker.ps1")
+        bundled_worker = self._resource_path(Path("runtime") / "Google-Fonts-Library-Downloader.worker.ps1")
         if not bundled_worker.exists():
             raise FileNotFoundError(f"Bundled worker script is missing: {bundled_worker}")
 
-        runtime_dir = Path(tempfile.gettempdir()) / "FontExtractorGUI" / "runtime"
+        runtime_dir = Path(tempfile.gettempdir()) / "GoogleFontsLibraryDownloaderGUI" / "runtime"
         runtime_dir.mkdir(parents=True, exist_ok=True)
-        runtime_worker = runtime_dir / "Download-GoogleFonts.worker.ps1"
+        runtime_worker = runtime_dir / "Google-Fonts-Library-Downloader.worker.ps1"
         hash_marker = runtime_dir / "source.hash"
 
-        source_script = self._project_root() / "Download-GoogleFonts.ps1"
+        source_script = self._project_root() / "Google-Fonts-Library-Downloader.ps1"
         if source_script.exists():
             source_hash = self._calculate_sha256(source_script)
         else:
@@ -397,7 +397,7 @@ class FontExtractorWindow(QMainWindow):
             self._set_status("Worker script preparation failed.")
             return
 
-        control_dir = Path(tempfile.gettempdir()) / "FontExtractorGUI" / "control"
+        control_dir = Path(tempfile.gettempdir()) / "GoogleFontsLibraryDownloaderGUI" / "control"
         control_dir.mkdir(parents=True, exist_ok=True)
         self._control_file_path = control_dir / f"stop-{uuid.uuid4().hex}.signal"
         if self._control_file_path.exists():
@@ -722,10 +722,11 @@ class FontExtractorWindow(QMainWindow):
 def main() -> int:
     app = QApplication(sys.argv)
     app.setFont(QFont("Bahnschrift", 10))
-    window = FontExtractorWindow()
+    window = GoogleFontsLibraryDownloaderWindow()
     window.show()
     return app.exec()
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

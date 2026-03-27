@@ -1,6 +1,6 @@
-# FontExtractor NeoGlass GUI
+﻿# Google Fonts Library Downloader NeoGlass GUI
 
-This folder contains a PySide6 desktop GUI wrapper for the PowerShell font extractor.
+This folder contains a PySide6 desktop GUI wrapper for the PowerShell Google Fonts Library Downloader.
 
 ## Run From Source
 
@@ -25,10 +25,11 @@ python app.py
 
 Output:
 
-`dist\FontExtractorGUI.exe`
+`dist\GoogleFontsLibraryDownloaderGUI.exe`
 
 ## Behavior
 
-- Uses `gui/runtime/Download-GoogleFonts.worker.ps1` for execution (the original root script is untouched).
+- Uses `gui/runtime/Google-Fonts-Library-Downloader.worker.ps1` for execution (the original root script is untouched).
 - Emits and parses structured GUI events using `__FX_GUI_EVENT__` JSON lines.
 - Supports `Pause`/`Resume` (process suspend), `Stop` (graceful stop file), and `Cancel` (immediate terminate).
+

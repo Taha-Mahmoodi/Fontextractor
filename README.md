@@ -1,6 +1,6 @@
-# FontExtractor (Open Source)
+﻿# Google Fonts Library Downloader (Open Source)
 
-FontExtractor downloads Google Fonts (`.ttf`) into a dated output folder and optionally helps install them on Windows.
+Google Fonts Library Downloader downloads Google Fonts (`.ttf`) into a dated output folder and optionally helps install them on Windows.
 
 This repository includes:
 - A **PowerShell CLI script** for direct/automation use.
@@ -49,18 +49,18 @@ If you are starting fresh, use **`V1.1`**.
 ## How To Run (Without GUI / CLI)
 
 Main script:
-- [`Download-GoogleFonts.ps1`](./Download-GoogleFonts.ps1)
+- [`Google-Fonts-Library-Downloader.ps1`](./Google-Fonts-Library-Downloader.ps1)
 
 Example (defaults):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Download-GoogleFonts.ps1
+powershell -ExecutionPolicy Bypass -File .\Google-Fonts-Library-Downloader.ps1
 ```
 
 Example (custom output root + source order):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Download-GoogleFonts.ps1 `
+powershell -ExecutionPolicy Bypass -File .\Google-Fonts-Library-Downloader.ps1 `
   -DownloadsRoot "D:\Fonts" `
   -BaseFolderName "Google Fonts 2026" `
   -SourceOrder zip,git,api
@@ -70,7 +70,7 @@ Example (API fallback with key):
 
 ```powershell
 $env:GOOGLE_FONTS_API_KEY = "YOUR_KEY"
-powershell -ExecutionPolicy Bypass -File .\Download-GoogleFonts.ps1 -SourceOrder api
+powershell -ExecutionPolicy Bypass -File .\Google-Fonts-Library-Downloader.ps1 -SourceOrder api
 ```
 
 ### Common CLI Parameters
@@ -89,8 +89,8 @@ Use the latest version in:
 ### Use prebuilt binaries (no Python required)
 
 Prebuilt artifacts are included in this repository under:
-- `V1.1/FontExtractorGUI.exe`
-- `V1.1/FontExtractorGUI-1.1.0.msi`
+- `V1.1/GoogleFontsLibraryDownloaderGUI.exe`
+- `V1.1/GoogleFontsLibraryDownloaderGUI-1.1.0.msi`
 
 For end users, these are self-contained:
 - No Python installation required
@@ -113,7 +113,7 @@ cd .\V1\gui
 ```
 
 Output:
-- `V1\gui\dist\FontExtractorGUI.exe`
+- `V1\gui\dist\GoogleFontsLibraryDownloaderGUI.exe`
 
 ### Build MSI installer
 
@@ -123,7 +123,7 @@ cd .\V1\gui
 ```
 
 Output:
-- `V1\gui\dist\FontExtractorGUI-1.1.0.msi`
+- `V1\gui\dist\GoogleFontsLibraryDownloaderGUI-1.1.0.msi`
 
 ## GUI Usage Notes
 
@@ -178,3 +178,4 @@ Recommended:
 ## License
 
 This project is licensed under the **MIT License**. See [LICENSE](./LICENSE).
+

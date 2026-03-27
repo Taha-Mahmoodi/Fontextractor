@@ -1,4 +1,4 @@
-name: Release Windows Builds
+﻿name: Release Windows Builds
 
 on:
   push:
@@ -64,12 +64,12 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path .\release | Out-Null
-          $exeSource = ".\V1\gui\dist\FontExtractorGUI.exe"
-          $msiSource = ".\V1\gui\dist\FontExtractorGUI-$env:APP_VERSION.msi"
+          $exeSource = ".\V1\gui\dist\GoogleFontsLibraryDownloaderGUI.exe"
+          $msiSource = ".\V1\gui\dist\GoogleFontsLibraryDownloaderGUI-$env:APP_VERSION.msi"
           if (-not (Test-Path $exeSource)) { throw "EXE not found: $exeSource" }
           if (-not (Test-Path $msiSource)) { throw "MSI not found: $msiSource" }
-          Copy-Item $exeSource ".\release\FontExtractorGUI-$env:APP_VERSION.exe" -Force
-          Copy-Item $msiSource ".\release\FontExtractorGUI-$env:APP_VERSION.msi" -Force
+          Copy-Item $exeSource ".\release\GoogleFontsLibraryDownloaderGUI-$env:APP_VERSION.exe" -Force
+          Copy-Item $msiSource ".\release\GoogleFontsLibraryDownloaderGUI-$env:APP_VERSION.msi" -Force
 
       - name: Sign Assets (optional)
         if: ${{ secrets.WINDOWS_CERT_PFX_BASE64 != '' && secrets.WINDOWS_CERT_PASSWORD != '' }}
@@ -97,8 +97,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.APP_VERSION }}
-          name: FontExtractor v${{ env.APP_VERSION }}
+          name: Google Fonts Library Downloader v${{ env.APP_VERSION }}
           files: |
-            release/FontExtractorGUI-${{ env.APP_VERSION }}.exe
-            release/FontExtractorGUI-${{ env.APP_VERSION }}.msi
+            release/GoogleFontsLibraryDownloaderGUI-${{ env.APP_VERSION }}.exe
+            release/GoogleFontsLibraryDownloaderGUI-${{ env.APP_VERSION }}.msi
           generate_release_notes: true
+
