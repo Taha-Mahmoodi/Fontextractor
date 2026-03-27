@@ -1,0 +1,29 @@
+# Python
+**/.venv/
+**/__pycache__/
+**/*.py[cod]
+**/*.pyd
+
+# Build outputs
+**/build/
+**/build_*/
+**/dist/
+**/dist_*/
+**/*.spec
+
+# IDE / editor
+.idea/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Logs / temp
+*.log
+*.tmp
+*.temp

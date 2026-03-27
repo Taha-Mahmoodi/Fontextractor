@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="FontExtractor GUI"
+           Manufacturer="FontExtractor"
+           Version="0.0.3"
+           UpgradeCode="B85B42A5-2F4B-43A3-99F9-6DA32C7CF001"
+           Scope="perMachine">
+    <MajorUpgrade DowngradeErrorMessage="A newer version of FontExtractor GUI is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="FontExtractor GUI" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="FontExtractor GUI" />
+    </StandardDirectory>
+
+    <Component Id="MainExecutableComponent" Directory="INSTALLFOLDER" Guid="*">
+      <File Id="MainExecutableFile" Source="D:\TAHA\Dev Projects\Fontextractor\V000.2\gui\dist_v0002_2\FontExtractorGUI.exe" KeyPath="yes" />
+    </Component>
+
+    <Component Id="StartMenuShortcutComponent" Directory="ApplicationProgramsFolder" Guid="*">
+      <Shortcut Id="ApplicationStartMenuShortcut"
+                Name="FontExtractor GUI"
+                Description="FontExtractor GUI"
+                Target="[INSTALLFOLDER]FontExtractorGUI.exe"
+                WorkingDirectory="INSTALLFOLDER" />
+      <RemoveFolder Id="RemoveAppProgramMenuDir" On="uninstall" />
+      <RegistryValue Root="HKLM" Key="Software\FontExtractor\FontExtractorGUI" Name="installed" Type="integer" Value="1" KeyPath="yes" />
+    </Component>
+
+    <Feature Id="MainFeature" Title="FontExtractor GUI" Level="1">
+      <ComponentRef Id="MainExecutableComponent" />
+      <ComponentRef Id="StartMenuShortcutComponent" />
+    </Feature>
+  </Package>
+</Wix>
