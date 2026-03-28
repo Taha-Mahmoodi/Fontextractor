@@ -475,6 +475,7 @@ class GoogleFontsLibraryDownloaderWindow(QMainWindow):
         self._stdout_buffer = ""
         self._stderr_buffer = ""
         self.overall_progress_bar.setValue(0)
+        self.download_progress_bar.setRange(0, 100)
         self.download_progress_bar.setValue(0)
         self.download_item_label.setText("No active font download.")
         self._current_download_item = ""
@@ -702,17 +703,24 @@ class GoogleFontsLibraryDownloaderWindow(QMainWindow):
             return
 
         if event.name == "download_progress":
-            percent = int(float(payload.get("percent", 0)))
+            percent_raw = float(payload.get("percent", -1))
             item = str(payload.get("item", "")).strip()
             bytes_read = int(float(payload.get("bytesRead", 0)))
             total_bytes = int(float(payload.get("totalBytes", 0)))
+            indeterminate = bool(payload.get("indeterminate", False)) or percent_raw < 0
 
-            self.download_progress_bar.setValue(max(0, min(100, percent)))
+            if indeterminate:
+                self.download_progress_bar.setRange(0, 0)
+            else:
+                self.download_progress_bar.setRange(0, 100)
+                self.download_progress_bar.setValue(max(0, min(100, int(percent_raw))))
             if item:
                 self._current_download_item = item
 
             if self._current_download_item:
-                if total_bytes > 0:
+                if indeterminate:
+                    progress_text = f"{self._current_download_item} ({self._format_bytes(bytes_read)})"
+                elif total_bytes > 0:
                     progress_text = f"{self._current_download_item} ({self._format_bytes(bytes_read)} / {self._format_bytes(total_bytes)})"
                 else:
                     progress_text = f"{self._current_download_item} ({self._format_bytes(bytes_read)})"
@@ -827,6 +835,7 @@ class GoogleFontsLibraryDownloaderWindow(QMainWindow):
 
         if outcome == "success":
             self.overall_progress_bar.setValue(100)
+            self.download_progress_bar.setRange(0, 100)
             self.download_progress_bar.setValue(100)
             if self.extract_progress_bar.isVisible():
                 self.extract_progress_bar.setValue(100)
@@ -846,6 +855,7 @@ class GoogleFontsLibraryDownloaderWindow(QMainWindow):
         elif outcome == "stopped":
             self._append_log(message, "warning")
             self.overall_progress_bar.setValue(0)
+            self.download_progress_bar.setRange(0, 100)
             self.download_progress_bar.setValue(0)
             self.download_item_label.setText("No active font download.")
             self.extract_progress_bar.setValue(0)
@@ -854,6 +864,7 @@ class GoogleFontsLibraryDownloaderWindow(QMainWindow):
         elif outcome == "canceled":
             self._append_log(message, "warning")
             self.overall_progress_bar.setValue(0)
+            self.download_progress_bar.setRange(0, 100)
             self.download_progress_bar.setValue(0)
             self.download_item_label.setText("No active font download.")
             self.extract_progress_bar.setValue(0)
@@ -862,6 +873,7 @@ class GoogleFontsLibraryDownloaderWindow(QMainWindow):
         else:
             self._append_log(message, "error")
             self.overall_progress_bar.setValue(0)
+            self.download_progress_bar.setRange(0, 100)
             self.download_progress_bar.setValue(0)
             self.download_item_label.setText("No active font download.")
             self.extract_progress_bar.setValue(0)

@@ -343,12 +343,14 @@ function Download-FileWithProgress {
         $outputStream = [System.IO.File]::Open($OutFile, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
 
         try {
+            $initialIndeterminate = $totalBytes -le 0
             Write-GuiEvent -Event "download_progress" -Data @{
                 source     = $SourceName
                 item       = $ItemName
                 bytesRead  = 0
                 totalBytes = if ($totalBytes -gt 0) { $totalBytes } else { 0 }
-                percent    = 0
+                percent    = if ($initialIndeterminate) { -1 } else { 0 }
+                indeterminate = $initialIndeterminate
             }
 
             while ($true) {
@@ -363,10 +365,12 @@ function Download-FileWithProgress {
 
                 if ($totalBytes -gt 0) {
                     $downloadPercent = Convert-ToClampedPercent -Value ((100.0 * $receivedBytes) / $totalBytes)
+                    $isIndeterminate = $false
                 }
                 else {
-                    # Unknown content length (chunked transfer): still provide smooth moving progress.
-                    $downloadPercent = Convert-ToClampedPercent -Value ([Math]::Min(95.0, (100.0 * (1.0 - [Math]::Exp(-$receivedBytes / 30000000.0)))))
+                    # Unknown size: keep an indeterminate bar and only show byte count.
+                    $downloadPercent = -1
+                    $isIndeterminate = $true
                 }
 
                 Write-GuiEvent -Event "download_progress" -Data @{
@@ -375,6 +379,7 @@ function Download-FileWithProgress {
                     bytesRead  = $receivedBytes
                     totalBytes = if ($totalBytes -gt 0) { $totalBytes } else { 0 }
                     percent    = $downloadPercent
+                    indeterminate = $isIndeterminate
                 }
             }
         }
@@ -400,6 +405,7 @@ function Download-FileWithProgress {
         bytesRead  = if ($receivedBytes -gt 0) { $receivedBytes } else { 0 }
         totalBytes = $finalTotalBytes
         percent    = 100
+        indeterminate = $false
     }
 }
 
@@ -415,9 +421,15 @@ function Expand-ZipArchiveWithProgress {
     Throw-IfStopRequested
     $archive = [System.IO.Compression.ZipFile]::OpenRead($ZipPath)
     try {
-        $fileEntries = @($archive.Entries | Where-Object { -not [string]::IsNullOrWhiteSpace($_.Name) })
+        $fileEntries = @(
+            $archive.Entries | Where-Object {
+                (-not [string]::IsNullOrWhiteSpace($_.Name)) -and
+                $_.Name.EndsWith(".ttf", [System.StringComparison]::OrdinalIgnoreCase)
+            }
+        )
         $entryTotal = [Math]::Max(1, $fileEntries.Count)
         $processed = 0
+        $skipped = 0
 
         Write-GuiEvent -Event "extract_progress" -Data @{
             source           = $SourceName
@@ -429,15 +441,46 @@ function Expand-ZipArchiveWithProgress {
 
         foreach ($entry in $fileEntries) {
             Throw-IfStopRequested
-            $targetPath = Join-Path $DestinationPath $entry.FullName
+            $entryPath = ($entry.FullName -replace "\\", "/").TrimStart("/")
+            $segments = @($entryPath.Split("/", [System.StringSplitOptions]::RemoveEmptyEntries))
+            if ($segments.Count -lt 2) {
+                $skipped++
+                continue
+            }
+
+            $relativePath = [System.IO.Path]::Combine($segments[1..($segments.Count - 1)])
+            if ([string]::IsNullOrWhiteSpace($relativePath) -or $relativePath.Contains("..")) {
+                $skipped++
+                continue
+            }
+
+            $targetPath = Join-Path $DestinationPath $relativePath
+            $targetPath = [System.IO.Path]::GetFullPath($targetPath)
             $targetDir = Split-Path -Path $targetPath -Parent
             Ensure-Directory -Path $targetDir
-            [System.IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $targetPath, $true)
-            $processed++
+
+            try {
+                $inputStream = $entry.Open()
+                $outputStream = [System.IO.File]::Open($targetPath, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+                try {
+                    $inputStream.CopyTo($outputStream)
+                }
+                finally {
+                    if ($null -ne $inputStream) { $inputStream.Dispose() }
+                    if ($null -ne $outputStream) { $outputStream.Dispose() }
+                }
+
+                $processed++
+            }
+            catch {
+                $skipped++
+                Write-Status -Message ("Skipping ZIP entry '{0}': {1}" -f $entry.FullName, $_.Exception.Message) -Level "warning" -Source $SourceName
+                continue
+            }
 
             $extractPercent = Convert-ToClampedPercent -Value ((100.0 * $processed) / [double]$entryTotal)
             $taskPercent = $TaskStartPercent + (($TaskEndPercent - $TaskStartPercent) * ($extractPercent / 100.0))
-            $entryLabel = $entry.FullName
+            $entryLabel = $relativePath
 
             Write-GuiEvent -Event "extract_progress" -Data @{
                 source           = $SourceName
@@ -458,6 +501,16 @@ function Expand-ZipArchiveWithProgress {
             totalEntries     = $fileEntries.Count
             percent          = 100
         }
+
+        if ($processed -le 0) {
+            throw "ZIP extraction produced zero TTF files."
+        }
+
+        if ($skipped -gt 0) {
+            Write-Status -Message ("ZIP extraction completed with $skipped skipped entries.") -Level "warning" -Source $SourceName
+        }
+
+        return $processed
     }
     finally {
         if ($null -ne $archive) {
@@ -489,22 +542,17 @@ function Invoke-ZipSource {
     Throw-IfStopRequested
 
     Write-Info -Message "Extracting ZIP snapshot"
-    Expand-ZipArchiveWithProgress -ZipPath $zipPath -DestinationPath $extractPath -SourceName $sourceName -TaskStartPercent 35 -TaskEndPercent 55
-    Write-TaskProgress -Source $sourceName -Percent 55 -Message "ZIP extraction complete."
-    Update-SourceOverallProgress -TaskPercent 55 -Source $sourceName -Message "ZIP extraction complete."
+    $extracted = Expand-ZipArchiveWithProgress -ZipPath $zipPath -DestinationPath $extractPath -SourceName $sourceName -TaskStartPercent 35 -TaskEndPercent 85
+    Write-TaskProgress -Source $sourceName -Percent 90 -Message "Copying extracted TTF files."
+    Update-SourceOverallProgress -TaskPercent 90 -Source $sourceName -Message "Copying extracted TTF files."
     Throw-IfStopRequested
 
-    $repoRoot = Get-ChildItem -LiteralPath $extractPath -Directory | Select-Object -First 1
-    if (-not $repoRoot) {
-        throw "ZIP snapshot extracted, but no repository root directory was found."
-    }
-
-    $copied = Copy-TtfFilesPreservingStructure -SourceRoot $repoRoot.FullName -DestinationRoot $OutputFolder -ProgressSource $sourceName -TaskStartPercent 55 -TaskEndPercent 100 -UpdateOverallProgress
+    $copied = Copy-TtfFilesPreservingStructure -SourceRoot $extractPath -DestinationRoot $OutputFolder -ProgressSource $sourceName -TaskStartPercent 90 -TaskEndPercent 100 -UpdateOverallProgress
     if ($copied -le 0) {
         throw "ZIP source returned zero TTF files."
     }
 
-    Write-TaskProgress -Source $sourceName -Percent 100 -Message "ZIP source finished."
+    Write-TaskProgress -Source $sourceName -Percent 100 -Message ("ZIP source finished with $copied TTF files.")
     Update-SourceOverallProgress -TaskPercent 100 -Source $sourceName -Message "ZIP source finished."
     return $copied
 }

@@ -15,6 +15,8 @@
   - `-InstallScope` (`currentuser` or `allusers`)
 - Network/TLS startup hardening for older Windows/PowerShell environments (improves startup on other laptops).
 - One-line CLI execution command documented for running from anywhere (no local script path required).
+- ZIP extraction stability fix: extract stage now targets `.ttf` entries and safely skips bad non-font ZIP entries.
+- Download bar accuracy fix: when server size is unknown, GUI now shows indeterminate progress instead of jumping to ~95%.
 
 ## Changed
 
