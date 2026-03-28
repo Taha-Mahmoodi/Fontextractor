@@ -270,6 +270,17 @@ function Test-IsAdministrator {
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
+function Get-ResolvedLocalAppData {
+    $path = [Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData)
+    if ([string]::IsNullOrWhiteSpace($path)) {
+        $path = $env:LOCALAPPDATA
+    }
+    if ([string]::IsNullOrWhiteSpace($path) -and -not [string]::IsNullOrWhiteSpace($env:USERPROFILE)) {
+        $path = Join-Path $env:USERPROFILE "AppData\Local"
+    }
+    return $path
+}
+
 function Install-TtfFontsNonInteractive {
     param(
         [Parameter(Mandatory = $true)][string]$FontsRoot,
@@ -290,7 +301,11 @@ function Install-TtfFontsNonInteractive {
         $registryPath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
     }
     else {
-        $fontsDir = Join-Path $env:LOCALAPPDATA "Microsoft\Windows\Fonts"
+        $localAppData = Get-ResolvedLocalAppData
+        if ([string]::IsNullOrWhiteSpace($localAppData)) {
+            throw "Could not resolve Local AppData folder for current user."
+        }
+        $fontsDir = Join-Path $localAppData "Microsoft\Windows\Fonts"
         $registryPath = "HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts"
     }
 

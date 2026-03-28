@@ -696,7 +696,7 @@ function Write-InstallerHelper {
 
     Throw-IfStopRequested
     $helperPath = Join-Path $OutputFolder "Install-All-Fonts.ps1"
-    $helperContent = @'
+$helperContent = @'
 [CmdletBinding()]
 param(
     [string]$FontsRoot = $PSScriptRoot,
@@ -738,6 +738,21 @@ function Ensure-Directory {
     }
 }
 
+function Get-ResolvedLocalAppData {
+    $path = [Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData)
+    if ([string]::IsNullOrWhiteSpace($path)) {
+        $path = $env:LOCALAPPDATA
+    }
+    if ([string]::IsNullOrWhiteSpace($path) -and -not [string]::IsNullOrWhiteSpace($env:USERPROFILE)) {
+        $path = Join-Path $env:USERPROFILE "AppData\Local"
+    }
+    return $path
+}
+
+if ([string]::IsNullOrWhiteSpace($FontsRoot)) {
+    $FontsRoot = $PSScriptRoot
+}
+
 if (-not (Test-Path -LiteralPath $FontsRoot)) {
     $message = "Fonts root not found: $FontsRoot"
     Write-GuiInstallEvent -Event "install_failed" -Data @{ message = $message }
@@ -753,7 +768,15 @@ if (-not $fontFiles) {
     exit 1
 }
 
-$windowsFontsDir = Join-Path $env:LOCALAPPDATA "Microsoft\Windows\Fonts"
+$localAppData = Get-ResolvedLocalAppData
+if ([string]::IsNullOrWhiteSpace($localAppData)) {
+    $message = "Could not resolve Local AppData folder for current user."
+    Write-GuiInstallEvent -Event "install_failed" -Data @{ message = $message }
+    Write-Error $message
+    exit 1
+}
+
+$windowsFontsDir = Join-Path $localAppData "Microsoft\Windows\Fonts"
 $registryPath = "HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts"
 Ensure-Directory -Path $windowsFontsDir
 if (-not (Test-Path -LiteralPath $registryPath)) {

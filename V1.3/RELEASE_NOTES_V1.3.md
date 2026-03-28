@@ -17,6 +17,7 @@
 - One-line CLI execution command documented for running from anywhere (no local script path required).
 - ZIP extraction stability fix: extract stage now targets `.ttf` entries and safely skips bad non-font ZIP entries.
 - Download bar accuracy fix: when server size is unknown, GUI now shows indeterminate progress instead of jumping to ~95%.
+- Install helper stability fix: robust Local AppData path resolution added to prevent empty-path failures on some Windows environments.
 
 ## Changed
 
